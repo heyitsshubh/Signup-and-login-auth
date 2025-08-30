@@ -76,7 +76,6 @@ export const signup:any = async (req: Request, res: Response): Promise<Response 
             await User.updateOne({ email }, { $set: { isVerified: true } });
             await Otp.deleteOne({ email });
 
-            // Find user for token payload
             const user = await User.findOne({ email });
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
@@ -93,6 +92,35 @@ export const signup:any = async (req: Request, res: Response): Promise<Response 
             });
         } catch (error) {
             console.error("OTP verification error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    };
+
+    export const login: any = async (req: Request, res: Response): Promise<Response | void> => {
+        const { email, password } = req.body;
+
+        try {
+            const user = await User.findOne({ email });
+            if (!user) {
+                return res.status(400).json({ message: "Invalid email or password" });
+            }
+
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ message: "Invalid email or password" });
+            }
+
+            const payload = { id: user._id, email: user.email };
+            const accessToken = generateAccessToken(payload);
+            const refreshToken = generateRefreshToken(payload);
+
+            return res.status(200).json({
+                message: "Login successful",
+                accessToken,
+                refreshToken
+            });
+        } catch (error) {
+            console.error("Login error:", error);
             return res.status(500).json({ message: "Server error" });
         }
     };
